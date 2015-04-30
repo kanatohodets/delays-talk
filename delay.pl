@@ -23,7 +23,6 @@ helper pg =>
 
 get '/booze_check' => sub ($c) {
     my $name = $c->param('name');
-    $c->render_later;
 
     my $delay = Mojo::IOLoop->delay(
         sub ($d) {

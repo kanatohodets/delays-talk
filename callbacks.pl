@@ -22,7 +22,6 @@ helper pg =>
 
 get '/booze_check' => sub ($c) {
     my $name = $c->param('name');
-    $c->render_later;
 
     my $customer_sql = 'SELECT id FROM customers WHERE name = ?'; 
     $c->pg->db->query($customer_sql, $name => sub ($db, $err, $res) {

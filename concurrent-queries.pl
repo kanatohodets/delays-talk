@@ -17,8 +17,6 @@ helper pg =>
 # complete. the arguments to the next step will be given in call order (-not-
 # return order).
 get '/multi_query' => sub ($c) {
-    $c->render_later;
-
     my $delay = Mojo::IOLoop->delay(
         sub ($d) {
             $c->pg->db->query('select ?::text, pg_sleep(4)',
