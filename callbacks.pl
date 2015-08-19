@@ -1,16 +1,13 @@
 #!perl
-use v5.20.1;
+use v5.22.0;
 use warnings;
 
 use Mojolicious::Lite;
 use Mojo::Pg;
 use experimental qw(signatures);
 
-# ABSTRACT: JSON API for supermarkets to determine how much you pay for beer. 
-# spoiler: the more you buy, the more you pay 
-#
-# if this sounds weird, .NL recently celebrated King's Day, where supermarkets
-# limited customers to 1 unit of booze each. 
+# ABSTRACT: JSON API for price gouging bars to determine how much you pay for beer.
+# spoiler: the more you buy, the more you pay
 
 helper pg =>
     sub { state $pg = Mojo::Pg->new('postgresql://btyler@localhost/my_cool_db') };
@@ -19,11 +16,13 @@ helper pg =>
 # 1) they encourage tight coupling (note the casual use of closed-over values from previous async actions)
 # 2) error handling is tricky: what would you do if the second query returned an error?
 # 3) callback mountain -- the flow gets hard to follow and read as the number of sequential async actions goes up
+# 4) code structure: nested callbacks make refactoring difficult because the code structure is tied
+#       to the current data/sequencing.
 
 get '/booze_check' => sub ($c) {
     my $name = $c->param('name');
 
-    my $customer_sql = 'SELECT id FROM customers WHERE name = ?'; 
+    my $customer_sql = 'SELECT id FROM customers WHERE name = ?';
     $c->pg->db->query($customer_sql, $name => sub ($db, $err, $res) {
         my $customer_id = $res->expand->hashes->[0]->{id};
 

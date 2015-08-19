@@ -1,5 +1,5 @@
 #!perl
-use v5.20.1;
+use v5.22.0;
 use warnings;
 
 use Mojolicious::Lite;
@@ -20,14 +20,14 @@ get '/multi_query' => sub ($c) {
     my $delay = Mojo::IOLoop->delay(
         sub ($d) {
             $c->pg->db->query('select ?::text, pg_sleep(4)',
-                'Cees' => $d->begin);
+                'Obama' => $d->begin);
             $c->pg->db->query('select ?::text, pg_sleep(2)',
-                'Jos' => $d->begin);
+                'Putin' => $d->begin);
         },
-        sub ($d, $cees_err, $cees_res, $jos_err, $jos_res) {
-            $c->render(json => { 
-                cees => $cees_res->hashes->[0], 
-                jos => $jos_res->hashes->[0] 
+        sub ($d, $obama_err, $obama_res, $putin_err, $putin_res) {
+            $c->render(json => {
+                obama => $obama_res->hashes->[0],
+                putin => $putin_res->hashes->[0]
             });
         }
     )->wait;

@@ -1,5 +1,5 @@
 #!perl
-use v5.20.1;
+use v5.22.0;
 use warnings;
 
 use Mojolicious::Lite;
@@ -7,11 +7,8 @@ use Mojo::Pg;
 use Mojo::IOLoop;
 use experimental qw(signatures postderef);
 
-# ABSTRACT: JSON API for supermarkets to determine how much you pay for beer. 
-# spoiler: the more you buy, the more you pay 
-#
-# if this sounds weird, .NL recently celebrated King's Day, where supermarkets
-# limited customers to 1 unit of booze each. 
+# ABSTRACT: JSON API for price gouging bars to determine how much you pay for beer.
+# spoiler: the more you buy, the more you pay
 
 helper pg =>
     sub { state $pg = Mojo::Pg->new('postgresql://btyler@localhost/my_cool_db') };
@@ -27,21 +24,21 @@ get '/booze_check' => sub ($c) {
     my $delay = Mojo::IOLoop->delay(
         sub ($d) {
             $d->data(name => $name);
-            $c->pg->db->query('SELECT id FROM customers WHERE name = ?', $name => $d->begin);
+            $c->pg->db->query(('SELECT id FROM customers WHERE name = ?', $name) => $d->begin);
         },
         sub ($d, $err, $res) {
             die $err if $err;
             my $customer_id = $res->array->[0];
 
             $d->data(customer_id => $customer_id);
-            $c->pg->db->query('SELECT COUNT(1) FROM beer_log WHERE customer_id = ?', $customer_id => $d->begin);
+            $c->pg->db->query(('SELECT COUNT(1) FROM beer_log WHERE customer_id = ?', $customer_id) => $d->begin);
         },
         sub ($d, $err, $res) {
             die $err if $err;
             my $count = $res->array->[0];
 
             $d->data(count => $count);
-            $c->pg->db->query('SELECT MAX(price) FROM beer_price_scale WHERE ? >= range_start', $count => $d->begin);
+            $c->pg->db->query(('SELECT MAX(price) FROM beer_price_scale WHERE ? >= range_start', $count) => $d->begin);
         },
         sub ($d, $err, $res) {
             die $err if $err;
@@ -49,7 +46,7 @@ get '/booze_check' => sub ($c) {
 
             my ($name, $customer_id, $count) = $d->data->@{qw(name customer_id count)};
             $c->render(json => { name => $name, id => $customer_id, beers => $count, price => $price });
-        })->catch(sub ($d, $err) { 
+        })->catch(sub ($d, $err) {
             $c->render(text => "blorg error! $err", code => 500);
     })->wait;
 };
