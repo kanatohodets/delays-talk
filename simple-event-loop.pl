@@ -3,43 +3,63 @@ use 5.22.0;
 use strict;
 use IO::Select;
 use IO::Socket::IP;
+use HTTP::Parser;
 use experimental qw(signatures postderef);
 
 my $listen = IO::Socket::IP->new(Listen => 1, LocalPort => 8080, ReuseAddr => 1)
     or die "can't bind listen socket: $!";
 my $select = IO::Select->new( $listen );
 
-# ABSTRACT: A super simple non-blocking event loop 'chat' server. Connect with telnet or nc,
-# e.g. 'telnet localhost 8080' or 'nc localhost 8080' -- ideally with multiple
-# clients.
+# ABSTRACT: A super simple non-blocking HTTP server that serves a single route: get /
 #
 # Also, take a look at the process CPU usage: note that the loop isn't
 # pegging your CPU, but the chat is still pretty responsive.
 #
 # For **maximum scalability** I could have used EV.pm, but that would obscure the
 # 'loop' bit somewhat.
-my (@broadcast, %handlers);
+
+my @events;
+my %to_write;
+my %watchers;
+%watchers = (
+  'get /' => sub ($sock) {
+    my $res = HTTP::Response->new(
+      200, 'OK', [], "you're cool!");
+    $to_write{$sock->fileno} =
+      "HTTP/1.1 " . $res->as_string;
+  },
+  read => sub ($sock) {
+    my $http = HTTP::Parser->new();
+    if ($sock->sysread(my $buffer, 4096, 0)) {
+      if ($http->add($buffer) == 0) {
+        my $req = $http->request;
+        if ($req->method eq 'GET' && $req->uri eq '///') {
+          $watchers{'get /'}->($sock);
+        }
+      }
+    } else {
+      $select->remove($sock) && $sock->close;
+    }
+  }
+);
+
+say "listening...";
 while (1) {
-    for my $sock ($select->can_read(1)) {
-        if ($sock == $listen) {
-            my $new = $listen->accept;
-            $select->add($new);
-            $handlers{$new->fileno} = {
-                on_read => sub ($data) { push @broadcast, $new->fileno . ": $data" }
-            };
-            push @broadcast, sprintf("* %s connected\n", $new->fileno);
-        } else {
-            if ($sock->sysread(my $buffer, 4096, 0)) {
-                $handlers{$sock->fileno}->{on_read}->($buffer);
-            } else {
-                push @broadcast, sprintf("* %s disconnected\n", $sock->fileno);
-                $select->remove($sock) and $sock->close;
-            }
-        }
+  for my $sock ($select->can_read(1)) {
+    if ($sock == $listen) {
+      $select->add($listen->accept);
+    } else {
+      push @events, [ read => $sock ];
     }
-    if (my @writable = $select->can_write(1)) {
-        if (my $message = shift @broadcast) {
-            $_->print($message) for @writable;
-        }
+  }
+  while (my $evt = shift @events) {
+    my ($event, $data) = @$evt;
+    $watchers{$event}->($data);
+  }
+  for my $sock ($select->can_write(1)) {
+    if (my $res = delete $to_write{$sock->fileno}) {
+      $sock->syswrite($res, length $res);
+      $select->remove($sock) && $sock->close;
     }
+  }
 }

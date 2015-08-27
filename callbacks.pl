@@ -34,7 +34,8 @@ get '/booze_check' => sub ($c) {
             $c->pg->db->query($price_sql, $count => sub ($db, $err, $res) {
                 my $price = $res->array->[0];
 
-                $c->render(json => { name => $name, id => $customer_id, beers => $count, price => $price });
+                $c->render(json => { name => $name, id => $customer_id,
+                           beers => $count, price => $price });
             });
         });
     });
