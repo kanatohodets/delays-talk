@@ -12,9 +12,6 @@ my $select = IO::Select->new( $listen );
 
 # ABSTRACT: A super simple non-blocking HTTP server that serves a single route: get /
 #
-# Also, take a look at the process CPU usage: note that the loop isn't
-# pegging your CPU, but the chat is still pretty responsive.
-#
 # For **maximum scalability** I could have used EV.pm, but that would obscure the
 # 'loop' bit somewhat.
 
